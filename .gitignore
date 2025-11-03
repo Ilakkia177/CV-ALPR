@@ -1,0 +1,27 @@
+# --- Ignore environment files ---
+.env
+*.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Ignore data, templates, and outputs ---
+data/
+templates/
+outputs/
+results/
+output_cars/
+*.csv
+*.xlsx
+*.mp4
+*.avi
+*.jpg
+*.png
+
+# --- Ignore system files ---
+.DS_Store
+.idea/
+.vscode/
