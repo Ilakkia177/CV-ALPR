@@ -1,0 +1,119 @@
+
+
+Pipeline Logic Flow
+1. main_pipeline.py (Entry Point)
+
+      This file is the starting point.
+
+      It defines:
+
+      from car_detection import run_pipeline
+
+      if __name__ == "__main__":
+          video_path = ".../videos/cropped_10.mp4"
+          templates_path = ".../preprocessing/char_templates_hybrid"
+          output_csv = "detected_plates_all.csv"
+          run_pipeline(video_path, templates_path, output_csv)
+
+
+      So when you run the script, it calls:
+
+      run_pipeline()  # defined inside car_detection.py
+
+2. car_detection.py
+
+      This file contains the main logic loop — it controls everything.
+      Steps inside run_pipeline()
+      Import helpers
+            from template_loader import load_templates
+            from plate_recognition import extract_plate_text
+            from stabilization import get_stabilized_plate
+      → brings in supporting functions.
+
+      Initialize constants
+      Set thresholds: min_area, motion_threshold, resize_width, etc.
+      Create output folder for cars.
+      Open CSV and write header:
+          "Frame, Car_X, Car_Y, Car_W, Car_H, Plate_X, Plate_Y, Plate_W, Plate_H, Timestamp, Plate"
+      Load templates
+          template_dict = load_templates(templates_path)
+          → loads A–Z, 0–9 grayscale character templates.
+      Read first video frame
+      Resize to fixed width.
+      Convert to grayscale.
+          Store as prev_gray for optical flow baseline.
+      Start frame-by-frame loop
+      For each frame:
+          Resize, convert to gray.
+          Use Optical Flow (Farneback) to detect moving regions.
+          Apply morphology to clean up motion mask.
+          Find contours → potential cars.
+      For each car contour:
+          Filter by area, aspect ratio, etc.
+          Extract the car ROI.
+          Save it to /output_cars/ (optional).
+          Inside this car:
+              Run edge detection (Canny).
+              Find quadrilateral contours → possible plates.
+              For each such contour:
+                  Crop plate ROI.
+                  Pass it to:
+                      plate_number = extract_plate_text(plate_roi, template_dict)
+      Save detection info
+          If plate_number exists:
+          Write one line to CSV with:
+          frame_count, car_x, car_y, car_w, car_h,
+          plate_x, plate_y, plate_w, plate_h, timestamp, plate_number
+      Stabilize plate output
+          Maintain a short memory of detected plates (last N frames).
+          Call:
+          stabilized_plate = get_stabilized_plate(plate_history)
+          This smooths noisy detections across frames.
+      Display
+          Overlay stabilized plate text on the frame.
+          Show live output window.
+          Press ESC to stop.
+      Cleanup
+          Release video and close all OpenCV windows.
+      Print:
+      All stabilized plates saved successfully.
+
+3.  template_loader.py
+
+      Defines load_templates(templates_path):
+      Reads all A–Z, 0–9 character images.
+      Converts to grayscale, thresholds, normalizes.
+      Returns a dictionary:
+      {"letters": {"A": [...], ...}, "digits": {"0": [...], ...}}
+
+4.  plate_recognition.py
+
+      Defines extract_plate_text(plate_roi, template_dict):
+      Convert plate image → gray.
+      Enhance contrast (CLAHE, Top-hat).
+      Threshold → binary mask.
+      Segment columns using projection profile.
+      Extract characters one by one.
+      Normalize each char via normalize_utils.py.
+      Match each char with template using cv2.matchTemplate().
+      Return recognized plate text (e.g., "TN66AB1234").
+
+5.  stabilization.py
+
+      Defines get_stabilized_plate(plate_history):
+      Uses a majority vote across last few frames.
+      Returns the most consistent text.
+
+6.  normalize_utils.py
+
+      Defines helper normalize_char(ch, size):
+      Centers and scales a character image to a uniform size.
+      Used during both template loading and recognition.
+
+7.  Output Files
+
+      output_cars/ — saved car crops.
+      detected_plates_all.csv — every detection with coordinates.
+      Console Output — “Saved stabilized plate: XX####” messages.
+
+Live OpenCV Window — shows cars + plate boxes + recognized text.
