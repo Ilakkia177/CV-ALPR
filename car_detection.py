@@ -70,6 +70,7 @@ def run_pipeline(video_path, templates_path, output_csv):
         # find contour of moving car
         contours, _ = cv2.findContours(motion_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         detected_plate = None
+        plate_box = None
 
         for c in contours:
             if cv2.contourArea(c) < min_area:
@@ -111,9 +112,12 @@ def run_pipeline(video_path, templates_path, output_csv):
 
                     #filter plate characteristics
                     if 3.0 < ar_p < 5.0 and 2500 < cv2.contourArea(cnt) < 20000 and y2 > car_roi.shape[0] // 2:
-
-                        #bb for plate
-                        cv2.rectangle(car_roi, (x2, y2), (x2 + w2, y2 + h2), (0, 0, 255), 2)
+                        plate_roi = car_roi[y2:y2 + h2, x2:x2 + w2]
+                        plate_number = extract_plate_text(plate_roi, template_dict)
+                        if plate_number:
+                            detected_plate = plate_number
+                            plate_box = (x2, y2, w2, h2)
+                            cv2.rectangle(car_roi, (x2, y2), (x2 + w2, y2 + h2), (0, 0, 255), 2)
                         plate_roi = car_roi[y2:y2 + h2, x2:x2 + w2]
 
                         # recognition of characters
@@ -133,16 +137,39 @@ def run_pipeline(video_path, templates_path, output_csv):
 
         if stabilized_plate and len(plate_history) >= min_confident_detections:
             if stabilized_plate != prev_stabilized:
-                
+
+                if plate_box is not None:
+                    x2, y2, w2, h2 = plate_box
+                    abs_x2 = x + x2
+                    abs_y2 = y + y2
+                    abs_w2 = w2
+                    abs_h2 = h2
+
+
+                # Scale all coordinates back to original frame size
+                orig_x  = int(x  / scale)
+                orig_y  = int(y  / scale)
+                orig_w  = int(w  / scale)
+                orig_h  = int(h  / scale)
+                orig_x2 = int(abs_x2 / scale)
+                orig_y2 = int(abs_y2 / scale)
+                orig_w2 = int(abs_w2 / scale)
+                orig_h2 = int(abs_h2 / scale)
+
+                # Write to CSV
                 with open(output_csv, "a", newline="") as f:
-                  csv.writer(f).writerow([
-                      frame_count, x, y, w, h, x2, y2, w2, h2, stabilized_plate
-                  ])
+                    csv.writer(f).writerow([
+                        frame_count, orig_x, orig_y, orig_w, orig_h,
+                        orig_x2, orig_y2, orig_w2, orig_h2, stabilized_plate
+                    ])
+                
+                
+                  
 
                 prev_stabilized = stabilized_plate
                 print(f" Saved stabilized plate: {stabilized_plate}")
 
-                
+
         # display stabilized plate on video
         if stabilized_plate:
             label = stabilized_plate
