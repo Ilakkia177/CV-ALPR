@@ -15,7 +15,7 @@ This project processes video frames to detect cars, localize plates, recognize c
 | **stabilization.py** | Stabilizes plate recognition results across frames using majority voting to ensure consistent text output. |
 | **normalize_utils.py** | Normalizes character images — centers and scales them to a fixed size for accurate template matching. |
 | **output_cars/** | Folder where detected car crops are saved (optional). |
-| **detected_plates_all.csv** | Output CSV containing all detections with frame number, coordinates, and recognized plate text. |
+| **detected_plates_all.csv** | Output CSV containing all detections with frame number, coordinates of car ROI,coordinates of plate ROI and recognized plate text. |
 
 ---
 
